@@ -55,9 +55,17 @@ commit_and_push() {
 }
 
 # 监控指定扩展名的文件变化
-fswatch -r --event Updated --event Created --event Moved --event Removed \
+# 使用 -E 选项启用扩展事件格式，并用 --event 过滤
+fswatch -r -E \
     -e ".git/" \
-    --ext "html" --ext "json" --ext "css" --ext "js" --ext "md" \
-    "$WORKDIR" | while read -r _; do
-    commit_and_push
+    -e "node_modules/" \
+    -e ".DS_Store" \
+    --event Updated --event Created --event Removed --event Renamed \
+    "$WORKDIR" | while read -r changed_file; do
+    # 只处理目标扩展名
+    case "$changed_file" in
+        *.html|*.json|*.css|*.js|*.md|*.yml|*.yaml)
+            commit_and_push
+            ;;
+    esac
 done
