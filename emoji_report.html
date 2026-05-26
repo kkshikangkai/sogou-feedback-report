@@ -199,6 +199,24 @@ td.good{color:#4ade80}td.warn{color:#fbbf24}td.bad{color:#f87171}td.neutral{colo
 .persist-btn:disabled{opacity:.4;cursor:not-allowed}
 .persist-btn:disabled:hover{background:var(--card-bg);border-color:var(--border)}
 
+
+/* Token Modal */
+.token-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:all .25s}
+.token-overlay.open{opacity:1;visibility:visible}
+.token-modal{background:var(--card-bg,#1e1e2e);border:1px solid var(--border,#333);border-radius:16px;padding:28px 32px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5);transform:translateY(20px);transition:transform .25s}
+.token-overlay.open .token-modal{transform:translateY(0)}
+.token-modal h3{margin:0 0 6px;font-size:1.1em;color:var(--text-main,#eee)}
+.token-modal .token-desc{font-size:.82em;color:var(--text-muted,#999);margin-bottom:16px;line-height:1.6}
+.token-modal .token-desc a{color:var(--accent,#7c6cf0);text-decoration:underline}
+.token-modal input[type=password]{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#333);background:var(--bg,#13111b);color:var(--text-main,#eee);font-size:.95em;box-sizing:border-box;margin-bottom:16px;outline:none;transition:border .15s}
+.token-modal input[type=password]:focus{border-color:var(--accent,#7c6cf0)}
+.token-modal-btns{display:flex;gap:10px;justify-content:flex-end}
+.token-modal-btns button{padding:8px 20px;border-radius:8px;border:1px solid var(--border,#333);cursor:pointer;font-size:.88em;transition:all .15s}
+.token-modal-btns .btn-cancel{background:transparent;color:var(--text-muted,#999)}
+.token-modal-btns .btn-cancel:hover{background:rgba(255,255,255,.05)}
+.token-modal-btns .btn-save{background:var(--accent,#7c6cf0);color:#fff;border-color:var(--accent,#7c6cf0)}
+.token-modal-btns .btn-save:hover{filter:brightness(1.15)}
+
 </style>
 </head>
 <body>
@@ -17352,21 +17370,36 @@ function showCloudStatus(text, type) {
 }
 
 // Token configuration dialog
+
 function showTokenDialog() {
-  const existing = getCloudToken();
-  const token = prompt('请输入 GitHub Personal Access Token\n\n获取方式：\n1. 打开 https://github.com/settings/tokens?type=beta\n2. 创建 Fine-grained token\n3. Repository access 选择 sogou-feedback-report\n4. Permissions → Contents → Read and Write\n5. 复制 token 粘贴到下方', existing || '');
-  if (token === null) return; // cancelled
-  if (token.trim()) {
-    setCloudToken(token.trim());
+  const overlay = document.getElementById('tokenOverlay');
+  const input = document.getElementById('tokenInput');
+  if (!overlay || !input) return;
+  input.value = getCloudToken() || '';
+  overlay.classList.add('open');
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeTokenModal() {
+  const overlay = document.getElementById('tokenOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function saveTokenFromModal() {
+  const input = document.getElementById('tokenInput');
+  const token = input ? input.value.trim() : '';
+  if (token) {
+    setCloudToken(token);
     showCloudStatus('✅ Token 已保存', 'ok');
-    setTimeout(() => showCloudStatus('', ''), 3000);
-    updateCloudUI();
   } else {
     localStorage.removeItem(STORAGE_PREFIX + 'gh_token');
     showCloudStatus('⚠️ Token 已清除', 'warn');
-    updateCloudUI();
   }
+  closeTokenModal();
+  updateCloudUI();
+  setTimeout(() => showCloudStatus('', ''), 3000);
 }
+
 
 function updateCloudUI() {
   const btn = document.getElementById('cloudConfigBtn');
@@ -17710,5 +17743,24 @@ function flashSaveIndicator() {
   });
 });
 </script>
+
+    <!-- Token Modal -->
+    <div class="token-overlay" id="tokenOverlay" onclick="if(event.target===this)closeTokenModal()">
+      <div class="token-modal">
+        <h3>🔑 配置 GitHub Token</h3>
+        <div class="token-desc">
+          用于将编辑数据同步到 GitHub 云端仓库。<br>
+          获取方式：<a href="https://github.com/settings/personal-access-tokens/new" target="_blank">创建 Fine-grained Token</a><br>
+          · Repository access → 选择 <code>sogou-feedback-report</code><br>
+          · Permissions → Contents → Read and Write
+        </div>
+        <input type="password" id="tokenInput" onkeydown="if(event.key==='Enter')saveTokenFromModal()" placeholder="ghp_xxxx 或 github_pat_xxxx" autocomplete="off">
+        <div class="token-modal-btns">
+          <button class="btn-cancel" onclick="closeTokenModal()">取消</button>
+          <button class="btn-save" onclick="saveTokenFromModal()">保存</button>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
